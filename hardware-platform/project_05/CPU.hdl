@@ -1,0 +1,65 @@
+/**
+ * The Hack Central Processing unit (CPU).
+ * Parses the binary code in the instruction input and executes it according to the
+ * Hack machine language specification. In the case of a C-instruction, computes the
+ * function specified by the instruction. If the instruction specifies to read a memory
+ * value, the inM input is expected to contain this value. If the instruction specifies
+ * to write a value to the memory, sets the outM output to this value, sets the addressM
+ * output to the target address, and asserts the writeM output (when writeM = 0, any
+ * value may appear in outM).
+ * If the reset input is 0, computes the address of the next instruction and sets the
+ * pc output to that value. If the reset input is 1, sets pc to 0.
+ * Note: The outM and writeM outputs are combinational: they are affected by the
+ * instruction's execution during the current cycle. The addressM and pc outputs are
+ * clocked: although they are affected by the instruction's execution, they commit to
+ * their new values only in the next cycle.
+ */
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    // loading the A register by the instruction if it's an A-instruction
+    // or with ALU output if it's a destination in the C-instruction
+    Not(in=instruction[15], out=isAinstruction);
+    Or(a=isAinstruction, b=instruction[5], out=loadARegister);
+	Mux16(a=ALUFeedback, b=instruction, sel=isAinstruction, out=AregisterIn);
+    ARegister(in=AregisterIn, load=loadARegister, out=AregisterOut, out[0..14]=addressM);
+
+    // selecting the second operand of the ALU based on the 'a' bit (access memory?)
+    Mux16(a=AregisterOut, b=inM, sel=instruction[12], out=secondOperand);
+
+    // load D-register by the ALU output if it's a C-instruction
+    // and D is a destination
+    // D register is the first operand of the ALU
+    And(a=instruction[15], b=instruction[4], out=loadDRegister);
+    DRegister(in=ALUFeedback, load=loadDRegister, out=DregisterOut);
+
+    // ALU calculation
+    ALU(x=DregisterOut, y=secondOperand, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUFeedback, out=outM, zr=isZero, ng=isNeg);
+
+    // enable writeM only if it's a C-instruction and M is a destination
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // logic to decide wether to load the counter with A register's content
+    // or just increment
+    Not(in=isNeg, out=isNotNeg);
+    Not(in=isZero, out=isNotZero);
+    And(a=isNotNeg, b=isNotZero, out=isPos);
+    And(a=instruction[0], b=isPos, out=jump1);
+    And(a=instruction[1], b=isZero, out=jump2);
+    And(a=instruction[2], b=isNeg, out=jump3);
+    Or(a=jump1, b=jump2, out=jump4);
+    Or(a=jump3, b=jump4, out=selectedJump);
+    And(a=selectedJump, b=instruction[15], out=loadPCwithAregister); // only if it's a c-instruction (otherwise no jump)
+    PC(in=AregisterOut, load=loadPCwithAregister, inc=true, reset=reset, out[0..14]=pc);
+}
