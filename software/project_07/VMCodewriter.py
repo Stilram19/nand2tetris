@@ -45,68 +45,89 @@ class VMCodewriter:
         return "\n".join(lines)
 
     def _eq(self) -> str:
-        label = f"EQUAL_{self.label_count}"
+        true_label = f"EQ_TRUE_{self.label_count}"
+        end_label = f"EQ_END_{self.label_count}"
         self.label_count += 1
         lines = [
             "// eq",
             "@SP",
-            "AM=M-1",
-            "D=M",
-            "@SP",
-            "A=M-1",
-            "D=M-D",
-            "M=-1",
-            f"@{label}",
-            "D;JEQ",
+            "AM=M-1", 
+            "D=M", 
+            "A=A-1", 
+            "D=M-D", 
+            f"@{true_label}",
+            "D;JEQ", 
+            # false case
             "@SP",
             "A=M-1",
             "M=0",
-            f"({label})",
+            f"@{end_label}",
+            "0;JMP",
+            # true case
+            f"({true_label})",
+            "@SP",
+            "A=M-1",
+            "M=-1",
+            f"({end_label})"
         ]
         return "\n".join(lines)
 
     def _gt(self) -> str:
-        label = f"GREATER_THAN_{self.label_count}"
+        true_label = f"GT_TRUE_{self.label_count}"
+        end_label = f"GT_END_{self.label_count}"
         self.label_count += 1
         lines = [
             "// gt",
             "@SP",
             "AM=M-1",
             "D=M",
-            "@SP",
-            "A=M-1",
+            "A=A-1",
             "D=M-D",
-            "M=-1",
-            f"@{label}",
+            f"@{true_label}",
             "D;JGT",
+            # false result
             "@SP",
             "A=M-1",
             "M=0",
-            f"({label})",
+            f"@{end_label}",
+            "0;JMP",
+            # true result
+            f"({true_label})",
+            "@SP",
+            "A=M-1",
+            "M=-1",
+            f"({end_label})"
         ]
         return "\n".join(lines)
 
     def _lt(self) -> str:
-        label = f"LESS_THAN_{self.label_count}"
+        true_label = f"LT_TRUE_{self.label_count}"
+        end_label = f"LT_END_{self.label_count}"
         self.label_count += 1
         lines = [
             "// lt",
             "@SP",
-            "AM=M-1",
-            "D=M",
-            "@SP",
-            "A=M-1",
-            "D=M-D",
-            "M=-1",
-            f"@{label}",
-            "D;JLT",
+            "AM=M-1", 
+            "D=M", 
+            "A=A-1", 
+            "D=M-D", 
+            f"@{true_label}",
+            "D;JLT", 
+            # false result
             "@SP",
             "A=M-1",
             "M=0",
-            f"({label})",
+            f"@{end_label}",
+            "0;JMP",
+            # true result
+            f"({true_label})",
+            "@SP",
+            "A=M-1",
+            "M=-1",
+            f"({end_label})"
         ]
         return "\n".join(lines)
-
+     
     def _and(self) -> str:
         lines = [
             "// and",
