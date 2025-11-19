@@ -268,3 +268,45 @@ class VMCodewriter:
         return "\n".join(lines)
 
     def writeCode(self, command: list[str]):
+        if len(command) == 1:
+            cmd = command[0]
+            arith_map = {
+                'add': self._add,
+                'sub': self._sub,
+                'neg': self._neg,
+                'eq': self._eq,
+                'gt': self._gt,
+                'lt': self._lt,
+                'and': self._and,
+                'or': self._or,
+                'not': self._not
+            }
+            if cmd in arith_map:
+                self.fileHandle.write(arith_map[cmd]())
+        elif len(command) == 3:
+            cmd, segment, index = command
+            index = int(index)
+            if segment in {'local', 'argument', 'this', 'that'}:
+                seg_map = {'local': self.LCL, 'argument': self.ARG, 'this': self.THIS, 'that': self.THAT}
+                base = seg_map[segment]
+                if cmd == 'push':
+                    self.fileHandle.write(self._push(base, index))
+                elif cmd == 'pop':
+                    self.fileHandle.write(self._pop(base, index))
+            elif segment == 'temp':
+                if cmd == 'push':
+                    self.fileHandle.write(self._push_temp(index))
+                elif cmd == 'pop':
+                    self.fileHandle.write(self._pop_temp(index))
+            elif segment == 'static':
+                if cmd == 'push':
+                    self.fileHandle.write(self._push_static(index))
+                elif cmd == 'pop':
+                    self.fileHandle.write(self._pop_static(index))
+            elif segment == 'pointer':
+                if cmd == 'push':
+                    self.fileHandle.write(self._push_pointer(index))
+                elif cmd == 'pop':
+                    self.fileHandle.write(self._pop_pointer(index))
+            elif segment == 'constant' and cmd == 'push':
+                self.fileHandle.write(self._push_constant(index))
