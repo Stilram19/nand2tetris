@@ -3,22 +3,142 @@ class VMCodewriter:
         self.fileHandle = fileHandle
         self.fileName = fileName
         # base addresses locations in RAM
-        self.SP = 0
         self.LCL = 1
         self.ARG = 2
         self.THIS = 3
         self.THAT = 4
+        # helps to create unique labels
+        self.label_count = 0
 
     # arithmetic commands
     def _add(self) -> str:
+        lines = [
+            "// add",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "M=D+M",
+        ]
+        return "\n".join(lines)
+
     def _sub(self) -> str:
-    def _neg() -> str:
+        lines = [
+            "// sub",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "M=M-D",
+        ]
+        return "\n".join(lines)
+
+    def _neg(self) -> str:
+        lines = [
+            "// neg",
+            "@SP",
+            "A=M-1",
+            "M=-M"
+        ]
+        return "\n".join(lines)
+
     def _eq(self) -> str:
+        label = f"EQUAL_{self.label_count}"
+        self.label_count += 1
+        lines = [
+            "// eq",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "D=M-D",
+            "M=-1",
+            f"@{label}",
+            "D;JEQ",
+            "@SP",
+            "A=M-1",
+            "M=0",
+            f"({label})",
+        ]
+        return "\n".join(lines)
+
     def _gt(self) -> str:
+        label = f"GREATER_THAN_{self.label_count}"
+        self.label_count += 1
+        lines = [
+            "// gt",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "D=M-D",
+            "M=-1",
+            f"@{label}",
+            "D;JGT",
+            "@SP",
+            "A=M-1",
+            "M=0",
+            f"({label})",
+        ]
+        return "\n".join(lines)
+
     def _lt(self) -> str:
+        label = f"LESS_THAN_{self.label_count}"
+        self.label_count += 1
+        lines = [
+            "// lt",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "D=M-D",
+            "M=-1",
+            f"@{label}",
+            "D;JLT",
+            "@SP",
+            "A=M-1",
+            "M=0",
+            f"({label})",
+        ]
+        return "\n".join(lines)
+
     def _and(self) -> str:
+        lines = [
+            "// and",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "M=M&D",
+        ]
+        return "\n".join(lines)
+
     def _or(self) -> str:
-    def _not(self) -> str: 
+        lines = [
+            "// or",
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@SP",
+            "A=M-1",
+            "M=M|D",
+        ]
+        return "\n".join(lines)
+
+    def _not(self) -> str:
+        lines = [
+            "// not",
+            "@SP",
+            "A=M-1",
+            "M=!M"
+        ]
+        return "\n".join(lines)
 
     # memory commands
     def _push_constant(self, const: int) -> str:
@@ -26,10 +146,10 @@ class VMCodewriter:
             f"// push constant {const}",
             f"@{const}",
             "D=A",
-            f"@{self.SP}",
+            "@SP",
             "A=M",
             "M=D",
-            f"@{self.SP}",
+            "@SP",
             "M=M+1"
         ]
         return "\n".join(lines)
@@ -40,10 +160,10 @@ class VMCodewriter:
             f"// push pointer {arg}",
             f"@{pointer}",
             "D=M",
-            f"@{self.SP}",
+            "@SP",
             "A=M",
             "M=D",
-            f"@{self.SP}",
+            "@SP",
             "M=M+1"
         ]
         return "\n".join(lines)
@@ -52,9 +172,8 @@ class VMCodewriter:
         pointer = self.THIS if not arg else self.THAT
         lines = [
             f"// pop pointer {arg}",
-            f"@{self.SP}",
-            "M=M-1",
-            "A=M",
+            "@SP",
+            "AM=M-1",
             "D=M",
             f"@{pointer}",
             "M=D"
@@ -67,10 +186,10 @@ class VMCodewriter:
             f"// push static {index}",
             f"@{static}",
             "D=M",
-            f"@{self.SP}",
+            "@SP",
             "A=M",
             "M=D",
-            f"@{self.SP}",
+            "@SP",
             "M=M+1"
         ]
         return "\n".join(lines)
@@ -79,9 +198,8 @@ class VMCodewriter:
         static = self.fileName + '.' + str(index)
         lines = [
             f"// pop static {index}",
-            f"@{self.SP}",
-            "M=M-1",
-            "A=M",
+            "@SP",
+            "AM=M-1",
             "D=M",
             f"@{static}",
             "M=D"
@@ -94,10 +212,10 @@ class VMCodewriter:
             f"// push temp {index}",
             f"@{addr}",
             "D=M",
-            f"@{self.SP}",
+            "@SP",
             "A=M",
             "M=D",
-            f"@{self.SP}",
+            "@SP",
             "M=M+1"
         ]
         return "\n".join(lines)
@@ -106,9 +224,8 @@ class VMCodewriter:
         addr = 5 + index
         lines = [
             f"// pop temp {index}",
-            f"@{self.SP}",
-            "M=M-1",
-            "A=M",
+            "@SP",
+            "AM=M-1",
             "D=M",
             f"@{addr}",
             "M=D"
@@ -124,10 +241,10 @@ class VMCodewriter:
             "D=D+A",
             "A=D",
             "D=M",
-            f"@{self.SP}",
+            "@SP",
             "A=M",
             "M=D",
-            f"@{self.SP}",
+            "@SP",
             "M=M+1"
         ]
         return "\n".join(lines)
@@ -141,9 +258,8 @@ class VMCodewriter:
             "D=D+A",
             "@R13",
             "M=D",
-            f"@{self.SP}",
-            "M=M-1",
-            "A=M",
+            "@SP",
+            "AM=M-1",
             "D=M",
             "@R13",
             "A=M",
